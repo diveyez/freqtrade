@@ -1246,7 +1246,7 @@ def test_update_order_from_ccxt(caplog):
     assert not o.ft_is_open
     assert o.order_filled_date is not None
 
-    ccxt_order.update({'id': 'somethingelse'})
+    ccxt_order['id'] = 'somethingelse'
     with pytest.raises(DependencyException, match=r"Order-id's don't match"):
         o.update_from_ccxt_object(ccxt_order)
 

@@ -353,8 +353,7 @@ def test_text_table_strategy(testdatadir):
 
 def test_generate_edge_table():
 
-    results = {}
-    results['ETH/BTC'] = PairInfo(-0.01, 0.60, 2, 1, 3, 10, 60)
+    results = {'ETH/BTC': PairInfo(-0.01, 0.60, 2, 1, 3, 10, 60)}
     assert generate_edge_table(results).count('+') == 7
     assert generate_edge_table(results).count('| ETH/BTC |') == 1
     assert generate_edge_table(results).count(

@@ -83,22 +83,20 @@ def _generate_result_line(result: DataFrame, starting_balance: int, first_column
     return {
         'key': first_column,
         'trades': len(result),
-        'profit_mean': result['profit_ratio'].mean() if len(result) > 0 else 0.0,
-        'profit_mean_pct': result['profit_ratio'].mean() * 100.0 if len(result) > 0 else 0.0,
+        'profit_mean': result['profit_ratio'].mean()
+        if len(result) > 0
+        else 0.0,
+        'profit_mean_pct': result['profit_ratio'].mean() * 100.0
+        if len(result) > 0
+        else 0.0,
         'profit_sum': profit_sum,
         'profit_sum_pct': round(profit_sum * 100.0, 2),
         'profit_total_abs': result['profit_abs'].sum(),
         'profit_total': profit_total,
         'profit_total_pct': round(profit_total * 100.0, 2),
-        'duration_avg': str(timedelta(
-                            minutes=round(result['trade_duration'].mean()))
-                            ) if not result.empty else '0:00',
-        # 'duration_max': str(timedelta(
-        #                     minutes=round(result['trade_duration'].max()))
-        #                     ) if not result.empty else '0:00',
-        # 'duration_min': str(timedelta(
-        #                     minutes=round(result['trade_duration'].min()))
-        #                     ) if not result.empty else '0:00',
+        'duration_avg': '0:00'
+        if result.empty
+        else str(timedelta(minutes=round(result['trade_duration'].mean()))),
         'wins': len(result[result['profit_abs'] > 0]),
         'draws': len(result[result['profit_abs'] == 0]),
         'losses': len(result[result['profit_abs'] < 0]),
@@ -220,15 +218,11 @@ def generate_strategy_comparison(bt_stats: Dict) -> List[Dict]:
 
 
 def generate_edge_table(results: dict) -> str:
-    floatfmt = ('s', '.10g', '.2f', '.2f', '.2f', '.2f', 'd', 'd', 'd')
-    tabular_data = []
     headers = ['Pair', 'Stoploss', 'Win Rate', 'Risk Reward Ratio',
                'Required Risk Reward', 'Expectancy', 'Total Number of Trades',
                'Average Duration (min)']
 
-    for result in results.items():
-        if result[1].nb_trades > 0:
-            tabular_data.append([
+    tabular_data = [[
                 result[0],
                 result[1].stoploss,
                 result[1].winrate,
@@ -237,8 +231,8 @@ def generate_edge_table(results: dict) -> str:
                 result[1].expectancy,
                 result[1].nb_trades,
                 round(result[1].avg_trade_duration)
-            ])
-
+            ] for result in results.items() if result[1].nb_trades > 0]
+    floatfmt = ('s', '.10g', '.2f', '.2f', '.2f', '.2f', 'd', 'd', 'd')
     # Ignore type as floatfmt does allow tuples but mypy does not know that
     return tabulate(tabular_data, headers=headers,
                     floatfmt=floatfmt, tablefmt="orgtbl", stralign="right")  # type: ignore
@@ -295,12 +289,24 @@ def generate_trading_stats(results: DataFrame) -> Dict[str, Any]:
     draw_trades = results.loc[results['profit_ratio'] == 0]
     losing_trades = results.loc[results['profit_ratio'] < 0]
 
-    holding_avg = (timedelta(minutes=round(results['trade_duration'].mean()))
-                   if not results.empty else timedelta())
-    winner_holding_avg = (timedelta(minutes=round(winning_trades['trade_duration'].mean()))
-                          if not winning_trades.empty else timedelta())
-    loser_holding_avg = (timedelta(minutes=round(losing_trades['trade_duration'].mean()))
-                         if not losing_trades.empty else timedelta())
+    holding_avg = (
+        timedelta()
+        if results.empty
+        else timedelta(minutes=round(results['trade_duration'].mean()))
+    )
+
+    winner_holding_avg = (
+        timedelta()
+        if winning_trades.empty
+        else timedelta(minutes=round(winning_trades['trade_duration'].mean()))
+    )
+
+    loser_holding_avg = (
+        timedelta()
+        if losing_trades.empty
+        else timedelta(minutes=round(losing_trades['trade_duration'].mean()))
+    )
+
 
     return {
         'wins': len(winning_trades),
@@ -390,10 +396,24 @@ def generate_strategy_stats(pairlist: List[str],
                                               skip_nan=True)
     daily_stats = generate_daily_stats(results)
     trade_stats = generate_trading_stats(results)
-    best_pair = max([pair for pair in pair_results if pair['key'] != 'TOTAL'],
-                    key=lambda x: x['profit_sum']) if len(pair_results) > 1 else None
-    worst_pair = min([pair for pair in pair_results if pair['key'] != 'TOTAL'],
-                     key=lambda x: x['profit_sum']) if len(pair_results) > 1 else None
+    best_pair = (
+        max(
+            (pair for pair in pair_results if pair['key'] != 'TOTAL'),
+            key=lambda x: x['profit_sum'],
+        )
+        if len(pair_results) > 1
+        else None
+    )
+
+    worst_pair = (
+        min(
+            (pair for pair in pair_results if pair['key'] != 'TOTAL'),
+            key=lambda x: x['profit_sum'],
+        )
+        if len(pair_results) > 1
+        else None
+    )
+
     if not results.empty:
         results['open_timestamp'] = results['open_date'].view(int64) // 1e6
         results['close_timestamp'] = results['close_date'].view(int64) // 1e6
@@ -408,13 +428,11 @@ def generate_strategy_stats(pairlist: List[str],
         'results_per_buy_tag': buy_tag_results,
         'sell_reason_summary': sell_reason_stats,
         'left_open_trades': left_open_results,
-        # 'days_breakdown_stats': days_breakdown_stats,
-
         'total_trades': len(results),
         'total_volume': float(results['stake_amount'].sum()),
-        'avg_stake_amount': results['stake_amount'].mean() if len(results) > 0 else 0,
-        'profit_mean': results['profit_ratio'].mean() if len(results) > 0 else 0,
-        'profit_median': results['profit_ratio'].median() if len(results) > 0 else 0,
+        'avg_stake_amount': results['stake_amount'].mean() if results else 0,
+        'profit_mean': results['profit_ratio'].mean() if results else 0,
+        'profit_median': results['profit_ratio'].median() if results else 0,
         'profit_total': results['profit_abs'].sum() / starting_balance,
         'profit_total_abs': results['profit_abs'].sum(),
         'backtest_start': min_date.strftime(DATETIME_PRINT_FORMAT),
@@ -422,10 +440,8 @@ def generate_strategy_stats(pairlist: List[str],
         'backtest_end': max_date.strftime(DATETIME_PRINT_FORMAT),
         'backtest_end_ts': int(max_date.timestamp() * 1000),
         'backtest_days': backtest_days,
-
         'backtest_run_start_ts': content['backtest_start_time'],
         'backtest_run_end_ts': content['backtest_end_time'],
-
         'trades_per_day': round(len(results) / backtest_days, 2),
         'market_change': market_change,
         'pairlist': pairlist,
@@ -439,19 +455,23 @@ def generate_strategy_stats(pairlist: List[str],
         'timedout_entry_orders': content['timedout_entry_orders'],
         'timedout_exit_orders': content['timedout_exit_orders'],
         'max_open_trades': max_open_trades,
-        'max_open_trades_setting': (config['max_open_trades']
-                                    if config['max_open_trades'] != float('inf') else -1),
+        'max_open_trades_setting': config['max_open_trades']
+        if config['max_open_trades'] != float('inf')
+        else -1,
         'timeframe': config['timeframe'],
         'timeframe_detail': config.get('timeframe_detail', ''),
         'timerange': config.get('timerange', ''),
         'enable_protections': config.get('enable_protections', False),
         'strategy_name': strategy,
-        # Parameters relevant for backtesting
         'stoploss': config['stoploss'],
         'trailing_stop': config.get('trailing_stop', False),
         'trailing_stop_positive': config.get('trailing_stop_positive'),
-        'trailing_stop_positive_offset': config.get('trailing_stop_positive_offset', 0.0),
-        'trailing_only_offset_is_reached': config.get('trailing_only_offset_is_reached', False),
+        'trailing_stop_positive_offset': config.get(
+            'trailing_stop_positive_offset', 0.0
+        ),
+        'trailing_only_offset_is_reached': config.get(
+            'trailing_only_offset_is_reached', False
+        ),
         'use_custom_stoploss': config.get('use_custom_stoploss', False),
         'minimal_roi': config['minimal_roi'],
         'use_sell_signal': config['use_sell_signal'],
@@ -459,8 +479,9 @@ def generate_strategy_stats(pairlist: List[str],
         'sell_profit_offset': config['sell_profit_offset'],
         'ignore_roi_if_buy_signal': config['ignore_roi_if_buy_signal'],
         **daily_stats,
-        **trade_stats
+        **trade_stats,
     }
+
 
     try:
         max_drawdown_legacy, _, _, _, _, _ = calculate_max_drawdown(
@@ -666,8 +687,8 @@ def text_table_strategy(strategy_results, stake_currency: str) -> str:
         # Support for prior backtest results
         drawdown = [f'{t["max_drawdown_per"]:.2f}' for t in strategy_results]
 
-    dd_pad_abs = max([len(t['max_drawdown_abs']) for t in strategy_results])
-    dd_pad_per = max([len(dd) for dd in drawdown])
+    dd_pad_abs = max(len(t['max_drawdown_abs']) for t in strategy_results)
+    dd_pad_per = max(len(dd) for dd in drawdown)
     drawdown = [f'{t["max_drawdown_abs"]:>{dd_pad_abs}} {stake_currency}  {dd:>{dd_pad_per}}%'
                 for t, dd in zip(strategy_results, drawdown)]
 

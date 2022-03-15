@@ -136,12 +136,12 @@ def show_config(rpc: Optional[RPC] = Depends(get_rpc_optional), config=Depends(g
 @router.post('/forcebuy', response_model=ForceBuyResponse, tags=['trading'])
 def forcebuy(payload: ForceBuyPayload, rpc: RPC = Depends(get_rpc)):
     ordertype = payload.ordertype.value if payload.ordertype else None
-    stake_amount = payload.stakeamount if payload.stakeamount else None
-    entry_tag = payload.entry_tag if payload.entry_tag else None
+    stake_amount = payload.stakeamount or None
+    entry_tag = payload.entry_tag or None
 
-    trade = rpc._rpc_forcebuy(payload.pair, payload.price, ordertype, stake_amount, entry_tag)
-
-    if trade:
+    if trade := rpc._rpc_forcebuy(
+        payload.pair, payload.price, ordertype, stake_amount, entry_tag
+    ):
         return ForceBuyResponse.parse_obj(trade.to_json())
     else:
         return ForceBuyResponse.parse_obj({"status": f"Error buying pair {payload.pair}."})
@@ -280,14 +280,12 @@ def list_available_pairs(timeframe: Optional[str] = None, stake_currency: Option
         pair_interval = [pair for pair in pair_interval if pair[0].endswith(stake_currency)]
     pair_interval = sorted(pair_interval, key=lambda x: x[0])
 
-    pairs = list({x[0] for x in pair_interval})
-    pairs.sort()
-    result = {
+    pairs = sorted({x[0] for x in pair_interval})
+    return {
         'length': len(pairs),
         'pairs': pairs,
         'pair_interval': pair_interval,
     }
-    return result
 
 
 @router.get('/sysinfo', response_model=SysInfo, tags=['info'])

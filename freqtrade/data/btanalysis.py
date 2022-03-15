@@ -209,7 +209,7 @@ def find_existing_backtest_stats(dirname: Union[Path, str], run_ids: Dict[str, s
                 del run_ids[strategy_name]
                 _load_and_merge_backtest_result(strategy_name, filename, results)
 
-        if len(run_ids) == 0:
+        if not run_ids:
             break
     return results
 
@@ -224,36 +224,35 @@ def load_backtest_data(filename: Union[Path, str], strategy: Optional[str] = Non
     :raise: ValueError if loading goes wrong.
     """
     data = load_backtest_stats(filename)
-    if not isinstance(data, list):
-        # new, nested format
-        if 'strategy' not in data:
-            raise ValueError("Unknown dataformat.")
-
-        if not strategy:
-            if len(data['strategy']) == 1:
-                strategy = list(data['strategy'].keys())[0]
-            else:
-                raise ValueError("Detected backtest result with more than one strategy. "
-                                 "Please specify a strategy.")
-
-        if strategy not in data['strategy']:
-            raise ValueError(f"Strategy {strategy} not available in the backtest result.")
-
-        data = data['strategy'][strategy]['trades']
-        df = pd.DataFrame(data)
-        if not df.empty:
-            df['open_date'] = pd.to_datetime(df['open_date'],
-                                             utc=True,
-                                             infer_datetime_format=True
-                                             )
-            df['close_date'] = pd.to_datetime(df['close_date'],
-                                              utc=True,
-                                              infer_datetime_format=True
-                                              )
-    else:
+    if isinstance(data, list):
         # old format - only with lists.
         raise OperationalException(
             "Backtest-results with only trades data are no longer supported.")
+    # new, nested format
+    if 'strategy' not in data:
+        raise ValueError("Unknown dataformat.")
+
+    if not strategy:
+        if len(data['strategy']) == 1:
+            strategy = list(data['strategy'].keys())[0]
+        else:
+            raise ValueError("Detected backtest result with more than one strategy. "
+                             "Please specify a strategy.")
+
+    if strategy not in data['strategy']:
+        raise ValueError(f"Strategy {strategy} not available in the backtest result.")
+
+    data = data['strategy'][strategy]['trades']
+    df = pd.DataFrame(data)
+    if not df.empty:
+        df['open_date'] = pd.to_datetime(df['open_date'],
+                                         utc=True,
+                                         infer_datetime_format=True
+                                         )
+        df['close_date'] = pd.to_datetime(df['close_date'],
+                                          utc=True,
+                                          infer_datetime_format=True
+                                          )
     if not df.empty:
         df = df.sort_values("open_date").reset_index(drop=True)
     return df
@@ -324,9 +323,7 @@ def load_trades_from_db(db_url: str, strategy: Optional[str] = None) -> pd.DataF
     filters = []
     if strategy:
         filters.append(Trade.strategy == strategy)
-    trades = trade_list_to_dataframe(Trade.get_trades(filters).all())
-
-    return trades
+    return trade_list_to_dataframe(Trade.get_trades(filters).all())
 
 
 def load_trades(source: str, db_url: str, exportfilename: Path,
@@ -342,8 +339,7 @@ def load_trades(source: str, db_url: str, exportfilename: Path,
     :return: DataFrame containing trades
     """
     if no_trades:
-        df = pd.DataFrame(columns=BT_DATA_COLUMNS)
-        return df
+        return pd.DataFrame(columns=BT_DATA_COLUMNS)
 
     if source == "DB":
         return load_trades_from_db(db_url)
@@ -457,9 +453,9 @@ def calculate_underwater(trades: pd.DataFrame, *, date_col: str = 'close_date',
     if len(trades) == 0:
         raise ValueError("Trade dataframe empty.")
     profit_results = trades.sort_values(date_col).reset_index(drop=True)
-    max_drawdown_df = _calc_drawdown_series(profit_results, date_col=date_col, value_col=value_col)
-
-    return max_drawdown_df
+    return _calc_drawdown_series(
+        profit_results, date_col=date_col, value_col=value_col
+    )
 
 
 def calculate_max_drawdown(trades: pd.DataFrame, *, date_col: str = 'close_date',

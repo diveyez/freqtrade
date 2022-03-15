@@ -508,9 +508,8 @@ class IStrategy(ABC, HyperStrategyMixin):
         if not candle_date:
             # Simple call ...
             return PairLocks.is_pair_locked(pair)
-        else:
-            lock_time = timeframe_to_next_date(self.timeframe, candle_date)
-            return PairLocks.is_pair_locked(pair, lock_time)
+        lock_time = timeframe_to_next_date(self.timeframe, candle_date)
+        return PairLocks.is_pair_locked(pair, lock_time)
 
     def analyze_ticker(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -778,7 +777,7 @@ class IStrategy(ABC, HyperStrategyMixin):
         :param low: Low value of this candle, only set in backtesting
         :param high: High value of this candle, only set in backtesting
         """
-        stop_loss_value = force_stoploss if force_stoploss else self.stoploss
+        stop_loss_value = force_stoploss or self.stoploss
 
         # Initiate stoploss with open_rate. Does nothing if stoploss is already set.
         trade.adjust_stop_loss(trade.open_rate, stop_loss_value, initial=True)
@@ -801,10 +800,13 @@ class IStrategy(ABC, HyperStrategyMixin):
             sl_offset = self.trailing_stop_positive_offset
 
             # Make sure current_profit is calculated using high for backtesting.
-            high_profit = current_profit if not high else trade.calc_profit_ratio(high)
+            high_profit = trade.calc_profit_ratio(high) if high else current_profit
 
             # Don't update stoploss if trailing_only_offset_is_reached is true.
-            if not (self.trailing_only_offset_is_reached and high_profit < sl_offset):
+            if (
+                not self.trailing_only_offset_is_reached
+                or high_profit >= sl_offset
+            ):
                 # Specific handling for trailing_stop_positive
                 if self.trailing_stop_positive is not None and high_profit > sl_offset:
                     stop_loss_value = self.trailing_stop_positive
@@ -859,10 +861,7 @@ class IStrategy(ABC, HyperStrategyMixin):
         # Check if time matches and current rate is above threshold
         trade_dur = int((current_time.timestamp() - trade.open_date_utc.timestamp()) // 60)
         _, roi = self.min_roi_reached_entry(trade_dur)
-        if roi is None:
-            return False
-        else:
-            return current_profit > roi
+        return False if roi is None else current_profit > roi
 
     def ft_check_timed_out(self, side: str, trade: LocalTrade, order: Order,
                            current_time: datetime) -> bool:
@@ -914,12 +913,11 @@ class IStrategy(ABC, HyperStrategyMixin):
             dataframe = _create_and_merge_informative_pair(
                 self, dataframe, metadata, inf_data, populate_fn)
 
-        if self._populate_fun_len == 2:
-            warnings.warn("deprecated - check out the Sample strategy to see "
-                          "the current function headers!", DeprecationWarning)
-            return self.populate_indicators(dataframe)  # type: ignore
-        else:
+        if self._populate_fun_len != 2:
             return self.populate_indicators(dataframe, metadata)
+        warnings.warn("deprecated - check out the Sample strategy to see "
+                      "the current function headers!", DeprecationWarning)
+        return self.populate_indicators(dataframe)  # type: ignore
 
     def advise_buy(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -932,12 +930,11 @@ class IStrategy(ABC, HyperStrategyMixin):
         """
         logger.debug(f"Populating buy signals for pair {metadata.get('pair')}.")
 
-        if self._buy_fun_len == 2:
-            warnings.warn("deprecated - check out the Sample strategy to see "
-                          "the current function headers!", DeprecationWarning)
-            return self.populate_buy_trend(dataframe)  # type: ignore
-        else:
+        if self._buy_fun_len != 2:
             return self.populate_buy_trend(dataframe, metadata)
+        warnings.warn("deprecated - check out the Sample strategy to see "
+                      "the current function headers!", DeprecationWarning)
+        return self.populate_buy_trend(dataframe)  # type: ignore
 
     def advise_sell(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -949,9 +946,8 @@ class IStrategy(ABC, HyperStrategyMixin):
         :return: DataFrame with sell column
         """
         logger.debug(f"Populating sell signals for pair {metadata.get('pair')}.")
-        if self._sell_fun_len == 2:
-            warnings.warn("deprecated - check out the Sample strategy to see "
-                          "the current function headers!", DeprecationWarning)
-            return self.populate_sell_trend(dataframe)  # type: ignore
-        else:
+        if self._sell_fun_len != 2:
             return self.populate_sell_trend(dataframe, metadata)
+        warnings.warn("deprecated - check out the Sample strategy to see "
+                      "the current function headers!", DeprecationWarning)
+        return self.populate_sell_trend(dataframe)  # type: ignore
