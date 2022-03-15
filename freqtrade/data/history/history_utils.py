@@ -135,9 +135,8 @@ def _load_cached_data_for_updating(pair: str, timeframe: str, timerange: Optiona
     Note: Only used by download_pair_history().
     """
     start = None
-    if timerange:
-        if timerange.starttype == 'date':
-            start = datetime.fromtimestamp(timerange.startts, tz=timezone.utc)
+    if timerange and timerange.starttype == 'date':
+        start = datetime.fromtimestamp(timerange.startts, tz=timezone.utc)
 
     # Intentionally don't pass timerange in - since we need to load the full dataset.
     data = data_handler.ohlcv_load(pair, timeframe=timeframe,
@@ -187,19 +186,30 @@ def _download_pair_history(pair: str, *,
         data, since_ms = _load_cached_data_for_updating(pair, timeframe, timerange,
                                                         data_handler=data_handler)
 
-        logger.debug("Current Start: %s",
-                     f"{data.iloc[0]['date']:%Y-%m-%d %H:%M:%S}" if not data.empty else 'None')
-        logger.debug("Current End: %s",
-                     f"{data.iloc[-1]['date']:%Y-%m-%d %H:%M:%S}" if not data.empty else 'None')
+        logger.debug(
+            "Current Start: %s",
+            'None'
+            if data.empty
+            else f"{data.iloc[0]['date']:%Y-%m-%d %H:%M:%S}",
+        )
+
+        logger.debug(
+            "Current End: %s",
+            'None'
+            if data.empty
+            else f"{data.iloc[-1]['date']:%Y-%m-%d %H:%M:%S}",
+        )
+
 
         # Default since_ms to 30 days if nothing is given
-        new_data = exchange.get_historic_ohlcv(pair=pair,
-                                               timeframe=timeframe,
-                                               since_ms=since_ms if since_ms else
-                                               arrow.utcnow().shift(
-                                                   days=-new_pairs_days).int_timestamp * 1000,
-                                               is_new_pair=data.empty
-                                               )
+        new_data = exchange.get_historic_ohlcv(
+            pair=pair,
+            timeframe=timeframe,
+            since_ms=since_ms
+            or arrow.utcnow().shift(days=-new_pairs_days).int_timestamp * 1000,
+            is_new_pair=data.empty,
+        )
+
         # TODO: Maybe move parsing to exchange class (?)
         new_dataframe = ohlcv_to_dataframe(new_data, timeframe, pair,
                                            fill_missing=False, drop_incomplete=True)
@@ -211,10 +221,20 @@ def _download_pair_history(pair: str, *,
             data = clean_ohlcv_dataframe(concat([data, new_dataframe], axis=0), timeframe, pair,
                                          fill_missing=False, drop_incomplete=False)
 
-        logger.debug("New  Start: %s",
-                     f"{data.iloc[0]['date']:%Y-%m-%d %H:%M:%S}" if not data.empty else 'None')
-        logger.debug("New End: %s",
-                     f"{data.iloc[-1]['date']:%Y-%m-%d %H:%M:%S}" if not data.empty else 'None')
+        logger.debug(
+            "New  Start: %s",
+            'None'
+            if data.empty
+            else f"{data.iloc[0]['date']:%Y-%m-%d %H:%M:%S}",
+        )
+
+        logger.debug(
+            "New End: %s",
+            'None'
+            if data.empty
+            else f"{data.iloc[-1]['date']:%Y-%m-%d %H:%M:%S}",
+        )
+
 
         data_handler.ohlcv_store(pair, timeframe, data=data)
         return True
@@ -244,10 +264,9 @@ def refresh_backtest_ohlcv_data(exchange: Exchange, pairs: List[str], timeframes
             continue
         for timeframe in timeframes:
 
-            if erase:
-                if data_handler.ohlcv_purge(pair, timeframe):
-                    logger.info(
-                        f'Deleting existing data for pair {pair}, interval {timeframe}.')
+            if erase and data_handler.ohlcv_purge(pair, timeframe):
+                logger.info(
+                    f'Deleting existing data for pair {pair}, interval {timeframe}.')
 
             logger.info(f'Downloading pair {pair}, interval {timeframe}.')
             process = f'{idx}/{len(pairs)}'
@@ -340,9 +359,8 @@ def refresh_backtest_trades_data(exchange: Exchange, pairs: List[str], datadir: 
             logger.info(f"Skipping pair {pair}...")
             continue
 
-        if erase:
-            if data_handler.trades_purge(pair):
-                logger.info(f'Deleting existing data for pair {pair}.')
+        if erase and data_handler.trades_purge(pair):
+            logger.info(f'Deleting existing data for pair {pair}.')
 
         logger.info(f'Downloading trades for pair {pair}.')
         _download_trades_history(exchange=exchange,
@@ -366,9 +384,8 @@ def convert_trades_to_ohlcv(pairs: List[str], timeframes: List[str],
     for pair in pairs:
         trades = data_handler_trades.trades_load(pair)
         for timeframe in timeframes:
-            if erase:
-                if data_handler_ohlcv.ohlcv_purge(pair, timeframe):
-                    logger.info(f'Deleting existing data for pair {pair}, interval {timeframe}.')
+            if erase and data_handler_ohlcv.ohlcv_purge(pair, timeframe):
+                logger.info(f'Deleting existing data for pair {pair}, interval {timeframe}.')
             try:
                 ohlcv = trades_to_ohlcv(trades, timeframe)
                 # Store ohlcv

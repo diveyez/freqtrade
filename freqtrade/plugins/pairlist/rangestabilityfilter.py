@@ -26,7 +26,7 @@ class RangeStabilityFilter(IPairList):
 
         self._days = pairlistconfig.get('lookback_days', 10)
         self._min_rate_of_change = pairlistconfig.get('min_rate_of_change', 0.01)
-        self._max_rate_of_change = pairlistconfig.get('max_rate_of_change', None)
+        self._max_rate_of_change = pairlistconfig.get('max_rate_of_change')
         self._refresh_period = pairlistconfig.get('refresh_period', 1440)
 
         self._pair_cache: TTLCache = TTLCache(maxsize=1000, ttl=self._refresh_period)

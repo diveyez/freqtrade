@@ -160,14 +160,12 @@ class IDataHandler(ABC):
     @classmethod
     def _pair_data_filename(cls, datadir: Path, pair: str, timeframe: str) -> Path:
         pair_s = misc.pair_to_filename(pair)
-        filename = datadir.joinpath(f'{pair_s}-{timeframe}.{cls._get_file_extension()}')
-        return filename
+        return datadir.joinpath(f'{pair_s}-{timeframe}.{cls._get_file_extension()}')
 
     @classmethod
     def _pair_trades_filename(cls, datadir: Path, pair: str) -> Path:
         pair_s = misc.pair_to_filename(pair)
-        filename = datadir.joinpath(f'{pair_s}-trades.{cls._get_file_extension()}')
-        return filename
+        return datadir.joinpath(f'{pair_s}-trades.{cls._get_file_extension()}')
 
     def ohlcv_load(self, pair, timeframe: str,
                    timerange: Optional[TimeRange] = None,
@@ -195,9 +193,7 @@ class IDataHandler(ABC):
 
         pairdf = self._ohlcv_load(pair, timeframe,
                                   timerange=timerange_startup)
-        if self._check_empty_df(pairdf, pair, timeframe, warn_no_data):
-            return pairdf
-        else:
+        if not self._check_empty_df(pairdf, pair, timeframe, warn_no_data):
             enddate = pairdf.iloc[-1]['date']
 
             if timerange_startup:
@@ -213,7 +209,7 @@ class IDataHandler(ABC):
                                            drop_incomplete=(drop_incomplete and
                                                             enddate == pairdf.iloc[-1]['date']))
             self._check_empty_df(pairdf, pair, timeframe, warn_no_data)
-            return pairdf
+        return pairdf
 
     def _check_empty_df(self, pairdf: DataFrame, pair: str, timeframe: str, warn_no_data: bool):
         """

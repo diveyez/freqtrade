@@ -116,7 +116,7 @@ def add_indicators(fig, row, indicators: Dict[str, Dict], data: pd.DataFrame) ->
                                'marker_line_color': color or 'DarkSlateGrey'})
             else:
                 if color:
-                    kwargs.update({'line': {'color': color}})
+                    kwargs['line'] = {'color': color}
                 kwargs['mode'] = 'lines'
                 if plot_type != 'scatter':
                     logger.warning(f'Indicator {indicator} has unknown plot trace kind {plot_type}'
@@ -377,7 +377,7 @@ def add_areas(fig, row: int, data: pd.DataFrame, indicators) -> make_subplots:
                     'Indicator "%s" ignored. Reason: This indicator is not '
                     'found in your strategy.', indicator
                 )
-            elif indicator_b not in data:
+            else:
                 logger.info(
                     'fill_to: "%s" ignored. Reason: This indicator is not '
                     'in your strategy.', indicator_b
@@ -568,7 +568,7 @@ def generate_plot_filename(pair: str, timeframe: str) -> str:
     Generate filenames per pair/timeframe to be used for storing plots
     """
     pair_s = pair_to_filename(pair)
-    file_name = 'freqtrade-plot-' + pair_s + '-' + timeframe + '.html'
+    file_name = f'freqtrade-plot-{pair_s}-{timeframe}.html'
 
     logger.info('Generate plot file for %s', pair)
 

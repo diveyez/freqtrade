@@ -109,10 +109,4 @@ def stoploss_from_absolute(stop_rate: float, current_rate: float) -> float:
     """
 
     # formula is undefined for current_rate 0, return maximum value
-    if current_rate == 0:
-        return 1
-
-    stoploss = 1 - (stop_rate / current_rate)
-
-    # negative stoploss values indicate the requested stop price is higher than the current price
-    return max(stoploss, 0.0)
+    return 1 if current_rate == 0 else max(1 - (stop_rate / current_rate), 0.0)

@@ -40,7 +40,7 @@ def _backup_file(file: Path, copy_file: bool = False) -> None:
     :param copy_file: keep file in place too.
     :return: None
     """
-    file_swp = str(file) + '.swp'
+    file_swp = f'{str(file)}.swp'
     if file.is_file():
         file.rename(file_swp)
 
@@ -54,7 +54,7 @@ def _clean_test_file(file: Path) -> None:
     :param file: complete path to the file
     :return: None
     """
-    file_swp = Path(str(file) + '.swp')
+    file_swp = Path(f'{str(file)}.swp')
     # 1. Delete file from the test
     if file.is_file():
         file.unlink()
@@ -156,7 +156,7 @@ def test_json_pair_data_filename(pair, expected_result):
     assert fn == Path(expected_result)
     fn = JsonGzDataHandler._pair_data_filename(Path('freqtrade/hello/world'), pair, '5m')
     assert isinstance(fn, Path)
-    assert fn == Path(expected_result + '.gz')
+    assert fn == Path(f'{expected_result}.gz')
 
 
 @pytest.mark.parametrize("pair,expected_result", [
@@ -174,7 +174,7 @@ def test_json_pair_trades_filename(pair, expected_result):
 
     fn = JsonGzDataHandler._pair_trades_filename(Path('freqtrade/hello/world'), pair)
     assert isinstance(fn, Path)
-    assert fn == Path(expected_result + '.gz')
+    assert fn == Path(f'{expected_result}.gz')
 
 
 def test_load_cached_data_for_updating(mocker, testdatadir) -> None:
@@ -724,11 +724,11 @@ def test_hdf5datahandler_trades_load(testdatadir):
     # unfiltered load has trades before starttime
     assert len([t for t in trades if t[0] < timerange.startts * 1000]) >= 0
     # filtered list does not have trades before starttime
-    assert len([t for t in trades2 if t[0] < timerange.startts * 1000]) == 0
+    assert not [t for t in trades2 if t[0] < timerange.startts * 1000]
     # unfiltered load has trades after endtime
     assert len([t for t in trades if t[0] > timerange.stopts * 1000]) > 0
     # filtered list does not have trades after endtime
-    assert len([t for t in trades2 if t[0] > timerange.stopts * 1000]) == 0
+    assert not [t for t in trades2 if t[0] > timerange.stopts * 1000]
 
 
 def test_hdf5datahandler_trades_store(testdatadir, tmpdir):

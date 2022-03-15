@@ -111,7 +111,7 @@ def retrier_async(f):
                     logger.warning(msg)
                 return await wrapper(*args, **kwargs)
             else:
-                logger.warning(msg + 'Giving up.')
+                logger.warning(f'{msg}Giving up.')
                 raise ex
     return wrapper
 
@@ -126,7 +126,7 @@ def retrier(_func=None, retries=API_RETRY_COUNT):
             except (TemporaryError, RetryableOrderError) as ex:
                 msg = f'{f.__name__}() returned exception: "{ex}". '
                 if count > 0:
-                    logger.warning(msg + f'Retrying still for {count} times.')
+                    logger.warning(f'{msg}Retrying still for {count} times.')
                     count -= 1
                     kwargs.update({'count': count})
                     if isinstance(ex, (DDosProtection, RetryableOrderError)):
@@ -136,7 +136,7 @@ def retrier(_func=None, retries=API_RETRY_COUNT):
                         time.sleep(backoff_delay)
                     return wrapper(*args, **kwargs)
                 else:
-                    logger.warning(msg + 'Giving up.')
+                    logger.warning(f'{msg}Giving up.')
                     raise ex
         return wrapper
     # Support both @retrier and @retrier(retries=2) syntax
